@@ -13,7 +13,7 @@ export async function FeedView(app) {
   try {
     const { data: posts, error } = await supabase
       .from("posts")
-      .select("imagenPost")
+      .select("imagenPost, user_id")
       .not("imagenPost", "is", null);
 
     if (error) {
@@ -26,17 +26,65 @@ export async function FeedView(app) {
       return;
     }
 
-    // Limpiar grid por si hay algo previo
+    // Limpiar grid
     imagesGrid.innerHTML = "";
 
     posts.forEach((post) => {
+      // Contenedor del post
+      const wrapper = document.createElement("div");
+      wrapper.classList.add("post");
+      wrapper.dataset.userId = post.user_id;
+
+      // Imagen
       const img = document.createElement("img");
       img.src = post.imagenPost;
       img.alt = "Imagen del post";
       img.classList.add("feed-img");
-      imagesGrid.appendChild(img);
+
+      // Botón like
+      const btn = document.createElement("button");
+      btn.textContent = "❤️";
+      btn.classList.add("likeBtn");
+
+      // Armar estructura
+      wrapper.appendChild(img);
+      wrapper.appendChild(btn);
+      imagesGrid.appendChild(wrapper);
     });
+
   } catch (err) {
     alert("Error inesperado al cargar Feed: " + err.message);
   }
 }
+
+// Evento global para manejar likes
+document.addEventListener("click", async (e) => {
+  if (e.target.classList.contains("likeBtn")) {
+
+    const post = e.target.closest(".post");
+
+    const destinatario = post.dataset.userId;
+
+    // ⚠️ temporal (después lo conectás con auth real)
+const remitente = localStorage.getItem("user_id");
+
+if (!remitente) {
+  alert("No hay user_id en localStorage");
+  return;
+}
+
+const { error } = await supabase
+  .from("Likes")
+  .insert([
+    {
+      Remitente: remitente,
+      Destinatario: destinatario
+    }
+  ]);
+    if (error) {
+      console.error("Error al insertar like:", error);
+    } else {
+      console.log("Like insertado");
+    }
+  }
+});
