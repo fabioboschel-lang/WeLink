@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Perfil Moderno con LocalStorage</title>
+<style>
+
+
+
+
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    font-family: 'Poppins', sans-serif;
+    overflow: hidden;
+  }
+
+  body {
+    background: linear-gradient(-45deg, #ff9a9e, #fad0c4, #fbc2eb, #a18cd1 );
+    background-size: 400% 400%;
+    animation: gradientBG 15s ease infinite;
+     
+  }
+
+  @keyframes gradientBG {
+    0% {background-position:0% 50%;}
+    50% {background-position:100% 50%;}
+    100% {background-position:0% 50%;}
+  }
+
+  .container {
+    width: 100%;
+    height: 100%;
+    display:flex;
+    flex-direction:column;
+    
+    
+    
+    
+  
+    
+
+    justify-content: center;
+    gap: 30px;
+  }
+
+  .circular-selector {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    background-color: #ffffffaa;
+    display:flex;
+    position:absolute;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    margin-top:300px ;
+    margin-left:50px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.25);
+    transition: transform 0.3s, box-shadow 0.3s;
+  }
+
+  .circular-selector:hover {
+    transform: scale(1.1);
+    box-shadow: 0 12px 28px rgba(0,0,0,0.35);
+  }
+
+  .circular-selector img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .username-input {
+    width: 200px;
+    max-width: 90%;
+    padding: 14px 18px;
+    font-size: 20px;
+    border-radius: 30px;
+    border: none;
+    outline: none;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    text-align: center;
+    background-color: transparent;
+    color: #333;
+    transition: box-shadow 0.3s;
+    margin-top:300px;
+    margin-left:150px;
+    
+    position: absolute;
+    
+  
+  }
+  .cta{
+    display:none;
+  }
+  
+
+
+  .rect-selector {
+    width: 330px;
+    height: 500px;
+    background-color: #ffffffaa;
+    display: flex;
+    position: absolute;
+    margin-left:50px;
+    margin-top: 900px;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    cursor: pointer;
+    border-radius: 20px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.25);
+    transition: transform 0.3s, box-shadow 0.3s;
+    outline: none;  
+  -webkit-tap-highlight-color: transparent;  
+  }
+
+  .rect-selector:hover {
+    transform: scale(1.05);
+    box-shadow: 0 12px 28px rgba(0,0,0,0.35);
+  }
+
+  .rect-selector img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  input[type="file"] {
+    display: none;
+  }
+  
+  
+  
+}
+.fullscreen input {
+  width: 80%;
+  font-size: 24px;
+  padding: 10px;
+  margin-bottom: 20px;
+}
+.fullscreen button {
+  font-size: 18px;
+  padding: 10px 20px;
+}
+
+.nav-bar {
+  width: 100%; /* ocupar todo el ancho del dispositivo */
+  max-width: 412px;
+  height: 30px;
+  background: linear-gradient(135deg, #4facfe, #00f2fe); /* degradado azul-celeste */
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%); /* centrado horizontal */
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  border-radius: 20px 20px 0 0; /* bordes redondeados arriba */
+  box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.25); /* sombra suave arriba */
+  z-index: 1000;
+}
+
+.nav-bar button {
+  background: transparent;
+  border: none;
+  font-size: 24px;
+  color: white;
+  cursor: pointer;
+  transition: transform 0.2s, color 0.2s;
+}
+
+.nav-bar button:hover,
+.nav-bar button:active {
+  transform: scale(1.2);
+  color: #fffa; /* un efecto sutil al tocar */
+}
+
+#nav-feed {
+  color: white; /* mejor visibilidad sobre el degradado */
+}
+
+#nav-profile {
+  color: white;
+}
+
+.feed-container {
+  height: 100vh; /* toda la pantalla */
+  overflow-y: scroll; /* scroll vertical */
+  scroll-snap-type: y mandatory; /* activa el snap vertical obligatorio */
+}
+
+.imagesGrid {
+  display: flex;
+  flex-direction: column;
+}
+
+.feed-img {
+  width: 100%;
+  height: 100vh; /* cada imagen ocupa toda la pantalla */
+  object-fit: cover;
+  scroll-snap-align: start; /* cada imagen se ajusta al inicio del contenedor */
+}
+
+
+
+</style>
+</head>
+<body>
+
+<div id="app"></div>
+
+<div id="nav"></div>
+
+
+
+<script type="module" src="app.js"></script>
+
+
+</body>
+</html>
