@@ -2,6 +2,8 @@
 import { supabase } from "./supabase.js";
 
 export async function FeedView(app) {
+  console.log("🚀 FeedView iniciado");
+
   app.innerHTML = `
     <div class="feed-container">
       <div id="imagesGrid" class="imagesGrid"></div>
@@ -9,12 +11,11 @@ export async function FeedView(app) {
   `;
 
   const imagesGrid = document.getElementById("imagesGrid");
-
-  // ⚙️ CONFIG
   const BATCH_SIZE = 30;
 
-  // ⚠️ usuario actual desde localStorage
+  // ⚠️ Usuario actual
   const currentUserId = localStorage.getItem("user_id");
+  console.log("👤 currentUserId:", currentUserId, "length:", currentUserId?.length);
 
   if (!currentUserId) {
     alert("No hay user_id en localStorage");
@@ -22,80 +23,89 @@ export async function FeedView(app) {
   }
 
   try {
-    // 🔹 1. Traer posts (batch)
+    // 🔹 1. Traer posts
     const { data: posts, error: postsError } = await supabase
       .from("posts")
       .select("imagenPost, user_id")
       .not("imagenPost", "is", null)
+      .order("created_at", { ascending: false })
       .limit(BATCH_SIZE);
 
     if (postsError) {
-      alert("Error cargando imágenes: " + postsError.message);
+      console.error("❌ Error posts:", postsError);
       return;
     }
+    console.log("📦 posts:", posts);
 
     if (!posts || posts.length === 0) {
-      alert("No hay imágenes para mostrar");
+      console.warn("⚠️ No hay posts");
       return;
     }
 
-    // 🔹 2. Traer TODOS los likes donde yo soy destinatario
+    // 🔹 2. Traer likes donde yo soy destinatario
     const { data: likes, error: likesError } = await supabase
       .from("Likes")
-      .select("Remitente, Destinatario")
+      .select("*")
       .eq("Destinatario", currentUserId);
 
     if (likesError) {
-      console.error("Error cargando likes:", likesError);
+      console.error("❌ Error likes:", likesError);
       return;
     }
+    console.log("❤️ likes crudos:", likes);
 
-    // 🔹 3. Convertir likes en un Set para lookup rápido
-    const likesSet = new Set(
-      likes.map(like => like.Remitente)
-    );
+    // 🔹 3. Revisar tipos y keys
+    likes.forEach((l, i) => {
+      console.log(`🔍 like[${i}] keys:`, Object.keys(l), "values:", l);
+    });
 
-    // 🔹 4. Limpiar grid
+    // 🔹 4. Crear Set de remitentes que me dieron like
+    const likesSet = new Set(likes.map(like => like.Remitente));
+    console.log("⚡ likesSet:", [...likesSet]);
+
+    // 🔹 5. Limpiar grid
     imagesGrid.innerHTML = "";
 
-    // 🔹 5. Renderizar posts con estado
-    posts.forEach((post) => {
+    // 🔹 6. Renderizar posts
+    posts.forEach((post, index) => {
+      console.log(`🧩 Post ${index}`, post);
 
-      // Estado interno del post
       const hasLikeFromUser = likesSet.has(post.user_id);
+      console.log("➡️ Comparación:");
+      console.log("post.user_id:", post.user_id, "¿Está en likesSet?:", hasLikeFromUser);
 
-      // Contenedor
       const wrapper = document.createElement("div");
       wrapper.classList.add("post");
       wrapper.dataset.userId = post.user_id;
+      wrapper.dataset.hasLikeFromUser = hasLikeFromUser;
 
-      // Imagen
+      console.log("🧠 wrapper.dataset.hasLikeFromUser:", wrapper.dataset.hasLikeFromUser);
+
       const img = document.createElement("img");
       img.src = post.imagenPost;
       img.alt = "Imagen del post";
       img.classList.add("feed-img");
 
-      // Botón like (normal)
       const btn = document.createElement("button");
       btn.textContent = "❤️";
       btn.classList.add("likeBtn");
 
-      // 💜 Corazón violeta (solo visual si ya te dio like)
+      // 💜 Corazón violeta
       if (hasLikeFromUser) {
+        console.log("💜 Se debería mostrar corazón violeta");
         const purpleHeart = document.createElement("div");
         purpleHeart.textContent = "💜";
         purpleHeart.classList.add("matchHeart");
         wrapper.appendChild(purpleHeart);
       }
 
-      // Armar estructura
       wrapper.appendChild(img);
       wrapper.appendChild(btn);
       imagesGrid.appendChild(wrapper);
     });
 
   } catch (err) {
-    alert("Error inesperado al cargar Feed: " + err.message);
+    console.error("💥 Error general:", err);
   }
 }
 
@@ -103,41 +113,45 @@ export async function FeedView(app) {
 document.addEventListener("click", async (e) => {
   if (e.target.classList.contains("likeBtn")) {
 
+    console.log("🖱 Click en like");
+
     const post = e.target.closest(".post");
+    console.log("📦 Post clickeado:", post);
+
     const destinatario = post.dataset.userId;
     const remitente = localStorage.getItem("user_id");
+
+    console.log("➡️ remitente:", remitente, "➡️ destinatario:", destinatario);
 
     if (!remitente) {
       alert("No hay user_id en localStorage");
       return;
     }
 
-    // 🔹 Insertar like en DB
     const { error } = await supabase
       .from("Likes")
-      .insert([
-        {
-          Remitente: remitente,
-          Destinatario: destinatario
-        }
-      ]);
+      .insert([{ Remitente: remitente, Destinatario: destinatario }]);
 
     if (error) {
-      console.error("Error al insertar like:", error);
+      console.error("❌ Error insert:", error);
       return;
     }
+    console.log("✅ Like insertado");
 
-    console.log("Like insertado");
+    const hasLikeFromUser = post.dataset.hasLikeFromUser === "true";
+    console.log("🔍 hasLikeFromUser desde dataset:", hasLikeFromUser);
 
-    // 🔥 RESPUESTA INMEDIATA (sin esperar DB)
-    // Si ya te había dado like → mostrar corazón violeta (match visual)
-    const existingPurple = post.querySelector(".matchHeart");
-
-    if (!existingPurple) {
-      const purpleHeart = document.createElement("div");
-      purpleHeart.textContent = "💜";
-      purpleHeart.classList.add("matchHeart");
-      post.appendChild(purpleHeart);
+    if (hasLikeFromUser) {
+      console.log("💜 MATCH detectado en click");
+      const existingPurple = post.querySelector(".matchHeart");
+      if (!existingPurple) {
+        const purpleHeart = document.createElement("div");
+        purpleHeart.textContent = "💜";
+        purpleHeart.classList.add("matchHeart");
+        post.appendChild(purpleHeart);
+      }
+    } else {
+      console.log("❌ No hay match (nadie te dio like antes)");
     }
   }
 });
