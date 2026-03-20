@@ -1,157 +1,267 @@
-// feedView.js
-import { supabase } from "./supabase.js";
+import { supabase } from "./supabase.js";  
+  
+export async function FeedView(app) {  
+  console.log("🚀 FeedView iniciado");  
+  
+  app.innerHTML = `  
+    <div class="feed-container">  
+      <div id="imagesGrid" class="imagesGrid"></div>  
+    </div>  
+  `;  
+  
+  const imagesGrid = document.getElementById("imagesGrid");  
+  const BATCH_SIZE = 30;  
+  
+  // ⚠️ usuario actual desde localStorage  
+  const currentUserId = localStorage.getItem("user_id");  
+  console.log("👤 currentUserId:", currentUserId);  
+  
+  if (!currentUserId) {  
+    alert("No hay user_id en localStorage");  
+    return;  
+  }  
+  
+  try {  
+    // 🔹 1. Traer posts (batch)  
+    const { data: posts, error: postsError } = await supabase  
+      .from("posts")  
+      .select("imagenPost, user_id")  
+      .not("imagenPost", "is", null)  
+      .order("created_at", { ascending: false })  
+      .limit(BATCH_SIZE);  
+  
+    if (postsError) {  
+      console.error("❌ Error posts:", postsError);  
+      return;  
+    }  
+  
+    if (!posts || posts.length === 0) {  
+      console.warn("⚠️ No hay posts");  
+      return;  
+    }  
+  
+    console.log("📦 posts cargados:", posts);  
+  
+    // 🔹 2. Traer todos los likes donde yo soy destinatario (para match violeta)  
+    const { data: likesReceived, error: likesError } = await supabase  
+      .from("Likes")  
+      .select("Remitente, Destinatario")  
+      .eq("Destinatario", currentUserId);  
+  
+    if (likesError) {  
+      console.error("❌ Error likes:", likesError);  
+      return;  
+    }  
+  
+    console.log("❤️ likes recibidos:", likesReceived);  
+  
+    // 🔹 3. Crear Set de remitentes que ya me dieron like (match visual)  
+    const likesSet = new Set(likesReceived.map(like => like.Remitente));  
+    console.log("⚡ likesSet:", [...likesSet]);  
+  
+    // 🔹 4. Traer likes que yo ya di (para toggle rojo/gris)  
+    const { data: likesGiven } = await supabase  
+      .from("Likes")  
+      .select("Remitente, Destinatario")  
+      .eq("Remitente", currentUserId);  
+  
+    const givenSet = new Set(likesGiven.map(like => like.Destinatario));  
+    console.log("💌 likesGiven:", [...givenSet]);  
 
-export async function FeedView(app) {
-  console.log("🚀 FeedView iniciado");
+    // 🔹 5. Traer textos aleatorios de la tabla "Proposiciones"  
+    const { data: textos, error: textosError } = await supabase  
+      .from("Proposiciones")  
+      .select("Estado1");  
 
-  app.innerHTML = `
-    <div class="feed-container">
-      <div id="imagesGrid" class="imagesGrid"></div>
-    </div>
-  `;
+    if (textosError) {  
+      console.error("❌ Error textos:", textosError);  
+    } else {  
+      console.log("📝 Textos cargados:", textos);  
+    }  
+  
+    // 🔹 6. Limpiar grid  
+    imagesGrid.innerHTML = "";  
+  
+    // 🔹 7. Renderizar posts  
+    posts.forEach((post, index) => {  
+      const wrapper = document.createElement("div");  
+      wrapper.classList.add("post");  
+      wrapper.dataset.userId = post.user_id;  
 
-  const imagesGrid = document.getElementById("imagesGrid");
-  const BATCH_SIZE = 30;
+      // Estado del toggle rojo/gris  
+      const hasGivenLike = givenSet.has(post.user_id);  
+      wrapper.dataset.hasGivenLike = hasGivenLike;  
 
-  // ⚠️ Usuario actual
-  const currentUserId = localStorage.getItem("user_id");
-  console.log("👤 currentUserId:", currentUserId, "length:", currentUserId?.length);
+      // Imagen  
+      const img = document.createElement("img");  
+      img.src = post.imagenPost;  
+      img.alt = "Imagen del post";  
+      img.classList.add("feed-img");  
 
-  if (!currentUserId) {
-    alert("No hay user_id en localStorage");
-    return;
-  }
+      // Botón like  
+      const btn = document.createElement("button");  
+      btn.textContent = hasGivenLike ? "❤️" : "🤍";  
+      btn.classList.add("likeBtn");  
 
-  try {
-    // 🔹 1. Traer posts
-    const { data: posts, error: postsError } = await supabase
-      .from("posts")
-      .select("imagenPost, user_id")
-      .not("imagenPost", "is", null)
-      .order("created_at", { ascending: false })
-      .limit(BATCH_SIZE);
+      // Corazón violeta si el otro usuario ya me dio like (match visual)  
+      if (likesSet.has(post.user_id)) {  
+        const purpleHeart = document.createElement("div");  
+        purpleHeart.textContent = "💜";  
+        purpleHeart.classList.add("matchHeart");  
+        wrapper.appendChild(purpleHeart);  
+      }  
 
-    if (postsError) {
-      console.error("❌ Error posts:", postsError);
-      return;
-    }
-    console.log("📦 posts:", posts);
+      // 🔹 Texto aleatorio relacionado al post  
+      let textoAleatorio = "";  
+      if (textos && textos.length > 0) {  
+        const idx = Math.floor(Math.random() * textos.length);  
+        textoAleatorio = textos[idx].Estado1;  
+      }  
+      const textoDiv = document.createElement("div");  
+      textoDiv.classList.add("post-text");  
+      textoDiv.textContent = textoAleatorio;  
+textoDiv.classList.add("show");
+      // Armar estructura  
+      wrapper.appendChild(img);  
+      wrapper.appendChild(btn);  
+      wrapper.appendChild(textoDiv);  
+      imagesGrid.appendChild(wrapper);  
+    });  
+  
+  } catch (err) {  
+    console.error("💥 Error general:", err);  
+  }  
+}  
+  
+// 🔥 Evento global de toggle like  
+document.addEventListener("click", async (e) => {  
+  if (!e.target.classList.contains("likeBtn")) return;  
 
-    if (!posts || posts.length === 0) {
-      console.warn("⚠️ No hay posts");
-      return;
-    }
+  const post = e.target.closest(".post");  
+  const destinatario = post.dataset.userId;  
+  const remitente = localStorage.getItem("user_id");  
 
-    // 🔹 2. Traer likes donde yo soy destinatario
-    const { data: likes, error: likesError } = await supabase
-      .from("Likes")
-      .select("*")
-      .eq("Destinatario", currentUserId);
+  if (!remitente) {  
+    alert("No hay user_id en localStorage");  
+    return;  
+  }  
 
-    if (likesError) {
-      console.error("❌ Error likes:", likesError);
-      return;
-    }
-    console.log("❤️ likes crudos:", likes);
+  const hasGivenLike = post.dataset.hasGivenLike === "true";  
 
-    // 🔹 3. Revisar tipos y keys
-    likes.forEach((l, i) => {
-      console.log(`🔍 like[${i}] keys:`, Object.keys(l), "values:", l);
+  try {  
+    if (hasGivenLike) {  
+      // 🔹 Eliminar like  
+      const { error: delError } = await supabase  
+        .from("Likes")  
+        .delete()  
+        .eq("Remitente", remitente)  
+        .eq("Destinatario", destinatario);  
+
+      if (delError) {  
+        console.error("❌ Error al eliminar like:", delError);  
+        return;  
+      }  
+
+      console.log("🖤 Like eliminado");  
+      e.target.textContent = "🤍";  
+      post.dataset.hasGivenLike = "false";  
+
+    } else {  
+      // 🔹 Insertar like  
+      const { error: insError } = await supabase  
+        .from("Likes")  
+        .insert([{ Remitente: remitente, Destinatario: destinatario }]);  
+
+      if (insError) {  
+        console.error("❌ Error al insertar like:", insError);  
+        return;  
+      }  
+
+      console.log("❤️ Like insertado");  
+      e.target.textContent = "❤️";  
+      post.dataset.hasGivenLike = "true";  
+
+      // 🔹 Mostrar match visual si el destinatario ya nos dio like  
+      if (post.querySelector(".matchHeart") === null) {  
+        const { data: reciprocal } = await supabase  
+          .from("Likes")  
+          .select("*")  
+          .eq("Remitente", destinatario)  
+          .eq("Destinatario", remitente);  
+
+        if (reciprocal.length > 0) {  
+          const purpleHeart = document.createElement("div");  
+          purpleHeart.textContent = "💜";  
+          purpleHeart.classList.add("matchHeart");  
+          post.appendChild(purpleHeart);  
+          console.log("💜 Match detectado y mostrado");  
+        }  
+      }  
+    }  
+  } catch (err) {  
+    console.error("💥 Error toggle like:", err);  
+  }  
+});
+// 🔹 Efecto visual de doble tap (degradado)
+// 🔹 Efecto visual de doble tap con corazón SVG degradado
+// 🔹 Efecto visual de doble tap con 
+
+// 🔹 Efecto visual de doble tap (solo // 🔹 Efecto visual de doble tap (solo visual)
+document.addEventListener("dblclick", (e) => {
+  if (e.target.classList.contains("feed-img")) {
+    const img = e.target;
+    const wrapper = img.closest(".post");
+    const rect = img.getBoundingClientRect();
+
+    // Posición relativa al wrapper
+    let x = e.clientX - rect.left; // posición horizontal del toque
+    let y = e.clientY - rect.top;  // posición vertical del toque
+
+    // Desplazamos un poco hacia arriba para que no tape el dedo
+    y -= 100; 
+
+    // Limitar para que no se salga de los bordes
+    x = Math.max(75, Math.min(rect.width - 75, x));
+    y = Math.max(75, Math.min(rect.height - 75, y));
+
+    // Crear contenedor para corazón
+    const bigHeart = document.createElement("div");
+    bigHeart.classList.add("bigHeartEffect");
+
+    // Posicionar en el punto calculado
+    bigHeart.style.left = `${x}px`;
+    bigHeart.style.top = `${y}px`;
+
+    wrapper.appendChild(bigHeart);
+
+    // Forzar reflow para transición
+    void bigHeart.offsetWidth;
+
+    // Activar animación
+    bigHeart.classList.add("show");
+
+    // Desaparecer después de 0.5s
+    setTimeout(() => {
+      bigHeart.classList.remove("show");
+    }, 900);
+
+    // Eliminar del DOM al terminar la transición
+    bigHeart.addEventListener("transitionend", () => {
+      bigHeart.remove();
     });
 
-    // 🔹 4. Crear Set de remitentes que me dieron like
-    const likesSet = new Set(likes.map(like => like.Remitente));
-    console.log("⚡ likesSet:", [...likesSet]);
-
-    // 🔹 5. Limpiar grid
-    imagesGrid.innerHTML = "";
-
-    // 🔹 6. Renderizar posts
-    posts.forEach((post, index) => {
-      console.log(`🧩 Post ${index}`, post);
-
-      const hasLikeFromUser = likesSet.has(post.user_id);
-      console.log("➡️ Comparación:");
-      console.log("post.user_id:", post.user_id, "¿Está en likesSet?:", hasLikeFromUser);
-
-      const wrapper = document.createElement("div");
-      wrapper.classList.add("post");
-      wrapper.dataset.userId = post.user_id;
-      wrapper.dataset.hasLikeFromUser = hasLikeFromUser;
-
-      console.log("🧠 wrapper.dataset.hasLikeFromUser:", wrapper.dataset.hasLikeFromUser);
-
-      const img = document.createElement("img");
-      img.src = post.imagenPost;
-      img.alt = "Imagen del post";
-      img.classList.add("feed-img");
-
-      const btn = document.createElement("button");
-      btn.textContent = "❤️";
-      btn.classList.add("likeBtn");
-
-      // 💜 Corazón violeta
-      if (hasLikeFromUser) {
-        console.log("💜 Se debería mostrar corazón violeta");
-        const purpleHeart = document.createElement("div");
-        purpleHeart.textContent = "💜";
-        purpleHeart.classList.add("matchHeart");
-        wrapper.appendChild(purpleHeart);
-      }
-
-      wrapper.appendChild(img);
-      wrapper.appendChild(btn);
-      imagesGrid.appendChild(wrapper);
-    });
-
-  } catch (err) {
-    console.error("💥 Error general:", err);
-  }
-}
-
-// 🔥 Evento global de likes
-document.addEventListener("click", async (e) => {
-  if (e.target.classList.contains("likeBtn")) {
-
-    console.log("🖱 Click en like");
-
-    const post = e.target.closest(".post");
-    console.log("📦 Post clickeado:", post);
-
-    const destinatario = post.dataset.userId;
-    const remitente = localStorage.getItem("user_id");
-
-    console.log("➡️ remitente:", remitente, "➡️ destinatario:", destinatario);
-
-    if (!remitente) {
-      alert("No hay user_id en localStorage");
-      return;
-    }
-
-    const { error } = await supabase
-      .from("Likes")
-      .insert([{ Remitente: remitente, Destinatario: destinatario }]);
-
-    if (error) {
-      console.error("❌ Error insert:", error);
-      return;
-    }
-    console.log("✅ Like insertado");
-
-    const hasLikeFromUser = post.dataset.hasLikeFromUser === "true";
-    console.log("🔍 hasLikeFromUser desde dataset:", hasLikeFromUser);
-
-    if (hasLikeFromUser) {
-      console.log("💜 MATCH detectado en click");
-      const existingPurple = post.querySelector(".matchHeart");
-      if (!existingPurple) {
-        const purpleHeart = document.createElement("div");
-        purpleHeart.textContent = "💜";
-        purpleHeart.classList.add("matchHeart");
-        post.appendChild(purpleHeart);
-      }
-    } else {
-      console.log("❌ No hay match (nadie te dio like antes)");
-    }
+    // Agregar SVG degradado
+    bigHeart.innerHTML = `
+<svg viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="gradientHeart" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FF8C00"/>
+      <stop offset="50%" stop-color="#FF69B4"/>
+      <stop offset="100%" stop-color="#FFD700"/>
+    </linearGradient>
+  </defs>
+  <path fill="url(#gradientHeart)" d="M256 464s-16-14.8-70-68.3C88.5 331 32 271.5 32 192 32 120 88 64 160 64c48 0 80 32 96 64 16-32 48-64 96-64 72 0 128 56 128 128 0 79.5-56.5 139-154 203.7-54 53.5-70 68.3-70 68.3z"/>
+</svg>
+    `;
   }
 });
