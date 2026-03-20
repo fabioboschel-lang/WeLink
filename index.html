@@ -240,7 +240,7 @@
   cursor: pointer;
   transition: transform 0.1s ease, opacity 0.1s ease;
   position: absolute;
-  bottom: 370px;
+  bottom: 100px;
   right: 10px;
   -webkit-tap-highlight-color: transparent;
 }
@@ -253,6 +253,7 @@
 
 .post {
   position: relative;
+  
 }
 
    .matchHeart{
@@ -304,6 +305,80 @@
   margin-left: 20px;
   
 }
+.bigHeartEffect {
+  position: absolute;
+  pointer-events: none;
+  width: 150px;
+  height: 150px;
+  z-index: 999;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transform: translate(-50%, -50%) scale(0.3);
+  opacity: 0;
+  transition: transform 0.4s ease-out, opacity 0.6s ease-out;
+}
+
+.bigHeartEffect.show {
+  opacity: 1;
+  transform: translate(-50%, -65%) scale(1.2);
+}
+
+/* 🔹 Corazón violeta de match pequeño */
+.matchHeart {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  font-size: 1.4rem;
+  pointer-events: none;
+  z-index: 5;
+  text-shadow: 0 0 4px rgba(0,0,0,0.3);
+}
+
+/* 🔹 SVG corazón degradado dentro del div */
+.bigHeartEffect svg {
+  width: 100%;
+  height: 100%;
+  fill: url(#gradientHeart);
+  filter: drop-shadow(0 0 8px rgba(0,0,0,0.3));
+}
+
+.post-text {
+  position: absolute;
+  top: 10%; /* verticalmente en el centro */
+  left: 20%; /* horizontalmente en el centro */
+  transform: translate(-50%, -50%); /* compensar ancho/alto para centrar exactamente */
+  color: white;
+  font-size: 1.2rem;
+  font-weight: 600;
+  text-align: center;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.45); /* fondo semi-transparente para visibilidad */
+  max-width: 80%; /* evita que el texto sea demasiado ancho */
+  pointer-events: none; /* que no interfiera con clicks */
+  box-shadow: 0 0 10px rgba(0,0,0,0.5);
+  line-height: 1.3;
+}
+
+/* 🔹 Opcional: efecto de aparición suave */
+.post-text {
+  opacity: 0;
+  transition: opacity 0.6s ease-in-out;
+}
+
+.post-text.show {
+  opacity: 1;
+}
+
+post img.feed-img {
+  width: 100%;
+  display: block;
+  border-radius: 12px;
+}
+
+</style>
+
 
 </style>
 </head>
