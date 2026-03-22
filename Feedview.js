@@ -133,74 +133,99 @@ textoDiv.classList.add("show");
   }  
 }  
   
-// 🔥 Evento global de toggle like  
-document.addEventListener("click", async (e) => {  
-  if (!e.target.classList.contains("likeBtn")) return;  
+// 🔥 Evento global de toggle like (PRO version)
+document.addEventListener("click", async (e) => {
+  if (!e.target.classList.contains("likeBtn")) return;
 
-  const post = e.target.closest(".post");  
-  const destinatario = post.dataset.userId;  
-  const remitente = localStorage.getItem("user_id");  
+  const post = e.target.closest(".post");
+  const destinatario = post.dataset.userId;
+  const remitente = localStorage.getItem("user_id");
 
-  if (!remitente) {  
-    alert("No hay user_id en localStorage");  
-    return;  
-  }  
+  if (!remitente || !destinatario) {
+    console.error("❌ Falta remitente o destinatario");
+    return;
+  }
 
-  const hasGivenLike = post.dataset.hasGivenLike === "true";  
+  // 🔥 anti-spam
+  if (post.dataset.liking === "true") return;
+  post.dataset.liking = "true";
 
-  try {  
-    if (hasGivenLike) {  
-      // 🔹 Eliminar like  
-      const { error: delError } = await supabase  
-        .from("Likes")  
-        .delete()  
-        .eq("Remitente", remitente)  
-        .eq("Destinatario", destinatario);  
+  const btn = e.target;
 
-      if (delError) {  
-        console.error("❌ Error al eliminar like:", delError);  
-        return;  
-      }  
+  try {
+    if (post.dataset.hasGivenLike === "true") {
+      // 🔥 1. UI instantánea (remove)
+      btn.textContent = "🤍";
+      post.dataset.hasGivenLike = "false";
 
-      console.log("🖤 Like eliminado");  
-      e.target.textContent = "🤍";  
-      post.dataset.hasGivenLike = "false";  
+      // 🔥 2. backend
+      const { error: delError } = await supabase
+        .from("Likes")
+        .delete()
+        .eq("Remitente", remitente)
+        .eq("Destinatario", destinatario);
 
-    } else {  
-      // 🔹 Insertar like  
-      const { error: insError } = await supabase  
-        .from("Likes")  
-        .insert([{ Remitente: remitente, Destinatario: destinatario }]);  
+      // 🔥 3. rollback si falla
+      if (delError) {
+        console.error("❌ Error al eliminar like:", delError);
 
-      if (insError) {  
-        console.error("❌ Error al insertar like:", insError);  
-        return;  
-      }  
+        btn.textContent = "❤️";
+        post.dataset.hasGivenLike = "true";
+      }
 
-      console.log("❤️ Like insertado");  
-      e.target.textContent = "❤️";  
-      post.dataset.hasGivenLike = "true";  
+    } else {
+      // 🔥 1. UI instantánea (insert)
+      btn.textContent = "❤️";
+      post.dataset.hasGivenLike = "true";
 
-      // 🔹 Mostrar match visual si el destinatario ya nos dio like  
-      if (post.querySelector(".matchHeart") === null) {  
-        const { data: reciprocal } = await supabase  
-          .from("Likes")  
-          .select("*")  
-          .eq("Remitente", destinatario)  
-          .eq("Destinatario", remitente);  
+      // 🔥 2. backend
+      const { error: insError } = await supabase
+        .from("Likes")
+        .insert([{ Remitente: remitente, Destinatario: destinatario }]);
 
-        if (reciprocal.length > 0) {  
-          const purpleHeart = document.createElement("div");  
-          purpleHeart.textContent = "💜";  
-          purpleHeart.classList.add("matchHeart");  
-          post.appendChild(purpleHeart);  
-          console.log("💜 Match detectado y mostrado");  
-        }  
-      }  
-    }  
-  } catch (err) {  
-    console.error("💥 Error toggle like:", err);  
-  }  
+      // 🔥 3. rollback si falla
+      if (insError) {
+        console.error("❌ Error al insertar like:", insError);
+
+        btn.textContent = "🤍";
+        post.dataset.hasGivenLike = "false";
+      } else {
+        // 🔥 4. CHECK MATCH (solo si insert fue OK)
+
+        if (!post.querySelector(".matchHeart")) {
+          const { data: reciprocal } = await supabase
+            .from("Likes")
+            .select("*")
+            .eq("Remitente", destinatario)
+            .eq("Destinatario", remitente);
+
+          if (reciprocal && reciprocal.length > 0) {
+            const purpleHeart = document.createElement("div");
+            purpleHeart.textContent = "💜";
+            purpleHeart.classList.add("matchHeart");
+            post.appendChild(purpleHeart);
+
+            console.log("💜 Match detectado y mostrado");
+          }
+        }
+      }
+    }
+
+  } catch (err) {
+    console.error("💥 Error toggle like:", err);
+
+    // 🔥 rollback general seguro
+    if (post.dataset.hasGivenLike === "true") {
+      btn.textContent = "🤍";
+      post.dataset.hasGivenLike = "false";
+    } else {
+      btn.textContent = "❤️";
+      post.dataset.hasGivenLike = "true";
+    }
+
+  } finally {
+    post.dataset.liking = "false";
+  }
 });
 // 🔹 Efecto visual de doble tap (degradado)
 // 🔹 Efecto visual de doble tap con corazón SVG degradado
