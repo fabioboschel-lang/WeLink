@@ -139,11 +139,15 @@ circularInput.addEventListener('change', async () => {
       const imageUrl = data.publicUrl;
 
       await supabase
-        .from("posts")
-        .upsert(
-          { user_id: userId, imagenPost: imageUrl },
-          { onConflict: "user_id" }
-        );
+  .from("posts")
+  .upsert(
+    { 
+      user_id: userId, 
+      imagenPost: imageUrl,
+      updated_at: new Date()
+    },
+    { onConflict: "user_id" }
+  );
 
       rectImg.src = imageUrl;
       localStorage.setItem("imagenPost", imageUrl);
@@ -240,4 +244,4 @@ usernameInput.addEventListener('keydown', (e) => {
   }
 });
   loadProfile();
-}
+    }
