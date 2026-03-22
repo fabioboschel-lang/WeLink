@@ -206,62 +206,92 @@ document.addEventListener("click", async (e) => {
 // 🔹 Efecto visual de doble tap con corazón SVG degradado
 // 🔹 Efecto visual de doble tap con 
 
-// 🔹 Efecto visual de doble tap (solo // 🔹 Efecto visual de doble tap (solo visual)
-document.addEventListener("dblclick", (e) => {
+document.addEventListener("dblclick", async (e) => {
   if (e.target.classList.contains("feed-img")) {
     const img = e.target;
     const wrapper = img.closest(".post");
+    if (!wrapper) return;
+
+    const destinatario = wrapper.dataset.userId;
+    const remitente = localStorage.getItem("user_id");
+    const hasGivenLike = wrapper.dataset.hasGivenLike === "true";
+
+    // 🔹 lógica like
+    if (!hasGivenLike && remitente && destinatario) {
+      if (wrapper.dataset.liking === "true") return;
+      wrapper.dataset.liking = "true";
+
+      const btn = wrapper.querySelector(".likeBtn");
+
+      // 🔥 UI instantánea
+      wrapper.dataset.hasGivenLike = "true";
+      if (btn) btn.textContent = "❤️";
+
+      try {
+        const { error: insError } = await supabase
+          .from("Likes")
+          .insert([{ Remitente: remitente, Destinatario: destinatario }]);
+
+        if (insError) {
+          console.error("❌ Error insert:", insError);
+
+          wrapper.dataset.hasGivenLike = "false";
+          if (btn) btn.textContent = "🤍";
+        }
+
+      } catch (err) {
+        console.error("💥 Error dblclick like:", err);
+
+        wrapper.dataset.hasGivenLike = "false";
+        if (btn) btn.textContent = "🤍";
+      } finally {
+        wrapper.dataset.liking = "false";
+      }
+    }
+
+    // 🔹 resto igual (tu código visual)
     const rect = img.getBoundingClientRect();
 
-    // Posición relativa al wrapper
-    let x = e.clientX - rect.left; // posición horizontal del toque
-    let y = e.clientY - rect.top;  // posición vertical del toque
+    let x = e.clientX - rect.left;
+    let y = e.clientY - rect.top;
 
-    // Desplazamos un poco hacia arriba para que no tape el dedo
-    y -= 100; 
+    y -= 100;
 
-    // Limitar para que no se salga de los bordes
     x = Math.max(75, Math.min(rect.width - 75, x));
     y = Math.max(75, Math.min(rect.height - 75, y));
 
-    // Crear contenedor para corazón
     const bigHeart = document.createElement("div");
     bigHeart.classList.add("bigHeartEffect");
 
-    // Posicionar en el punto calculado
     bigHeart.style.left = `${x}px`;
     bigHeart.style.top = `${y}px`;
 
     wrapper.appendChild(bigHeart);
+const gradientId = "gradientHeart-" + Date.now();
 
-    // Forzar reflow para transición
-    void bigHeart.offsetWidth;
-
-    // Activar animación
-    bigHeart.classList.add("show");
-
-    // Desaparecer después de 0.5s
-    setTimeout(() => {
-      bigHeart.classList.remove("show");
-    }, 900);
-
-    // Eliminar del DOM al terminar la transición
-    bigHeart.addEventListener("transitionend", () => {
-      bigHeart.remove();
-    });
-
-    // Agregar SVG degradado
-    bigHeart.innerHTML = `
+bigHeart.innerHTML = `
 <svg viewBox="0 0 512 512">
   <defs>
-    <linearGradient id="gradientHeart" x1="0%" y1="0%" x2="100%" y2="100%">
+    <linearGradient id="${gradientId}" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#FF8C00"/>
       <stop offset="50%" stop-color="#FF69B4"/>
       <stop offset="100%" stop-color="#FFD700"/>
     </linearGradient>
   </defs>
-  <path fill="url(#gradientHeart)" d="M256 464s-16-14.8-70-68.3C88.5 331 32 271.5 32 192 32 120 88 64 160 64c48 0 80 32 96 64 16-32 48-64 96-64 72 0 128 56 128 128 0 79.5-56.5 139-154 203.7-54 53.5-70 68.3-70 68.3z"/>
+  <path fill="url(#${gradientId})" d="M256 464s-16-14.8-70-68.3C88.5 331 32 271.5 32 192 32 120 88 64 160 64c48 0 80 32 96 64 16-32 48-64 96-64 72 0 128 56 128 128 0 79.5-56.5 139-154 203.7-54 53.5-70 68.3-70 68.3z"/>
 </svg>
-    `;
-  }
+`;
+    void bigHeart.offsetWidth;
+
+    bigHeart.classList.add("show");
+
+    setTimeout(() => {
+      bigHeart.classList.remove("show");
+    }, 900);
+
+    bigHeart.addEventListener("transitionend", () => {
+      bigHeart.remove();
+    });
+
+
 });
